@@ -179,25 +179,26 @@ async function generateContentWithFallback(
   throw lastError || new Error("All models in Gemini API fallback chain failed.");
 }
 
+export const app = express();
+
+// Middleware to handle large file payloads (images, documents)
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+// API Route: Health check
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", time: new Date().toISOString() });
+});
+
 async function startServer() {
-  const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-  // Middleware to handle large file payloads (images, documents)
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
-
-  // API Route: Health check
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", time: new Date().toISOString() });
-  });
-
-  // API Route: Chat (Streaming SSE)
-  app.post("/api/chat", async (req: express.Request, res: express.Response): Promise<void> => {
-    if (!process.env.GEMINI_API_KEY) {
-      res.status(500).json({ error: "Gemini API key is missing. Please set it in AI Studio Secrets panel." });
-      return;
-    }
+// API Route: Chat (Streaming SSE)
+app.post("/api/chat", async (req: express.Request, res: express.Response): Promise<void> => {
+  if (!process.env.GEMINI_API_KEY) {
+    res.status(500).json({ error: "Gemini API key is missing. Please set it in AI Studio Secrets panel." });
+    return;
+  }
 
     const {
       messages,
@@ -302,13 +303,12 @@ async function startServer() {
     }
   });
 
-  // API Route: Memory Extraction
-  // Analyzes chat messages to extract persistent, high-value facts about the user (e.g. preferences, names, jobs)
-  app.post("/api/extract-memories", async (req, res) => {
-    if (!process.env.GEMINI_API_KEY) {
-      res.json({ memories: [] });
-      return;
-    }
+// API Route: Extract Memory
+app.post("/api/extract-memories", async (req, res) => {
+  if (!process.env.GEMINI_API_KEY) {
+    res.json({ memories: [] });
+    return;
+  }
 
     const { messages } = req.body;
     if (!messages || messages.length < 2) {
@@ -374,6 +374,11 @@ Example response: ["User is a developer", "User has a dog named Buddy"]
   });
 }
 
-startServer().catch((err) => {
-  console.error("Failed to start server:", err);
-});
+// Start server if not running on Vercel
+if (!process.env.VERCEL) {
+  startServer().catch((err) => {
+    console.error("Failed to start server:", err);
+  });
+}
+
+export default app;
