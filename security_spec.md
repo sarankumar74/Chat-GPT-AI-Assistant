@@ -32,3 +32,5 @@ All above payloads must lead to instant `PERMISSION_DENIED` errors at the Firest
 import { assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
 // Tests verifying that spoofed user IDs or unauthenticated reads/writes are denied.
 ```
+
+

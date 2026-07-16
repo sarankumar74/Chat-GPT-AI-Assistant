@@ -17,6 +17,7 @@ service cloud.firestore {
     function existing() {
       return resource.data;
     }
+    
 
     // Validation for Conversation
     function isValidConversation(data) {

@@ -188,3 +188,5 @@ export default function SettingsPanel({ settings, onChange, isOpen, onClose }: S
     </div>
   );
 }
+
+

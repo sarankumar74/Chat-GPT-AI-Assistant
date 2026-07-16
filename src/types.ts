@@ -63,3 +63,5 @@ export interface ChatSettings {
   searchGroundingEnabled: boolean;
   temperature: number;
 }
+
+
