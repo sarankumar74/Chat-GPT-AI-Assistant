@@ -1,0 +1,62 @@
+{
+  "entities": {
+    "Conversation": {
+      "title": "Conversation",
+      "description": "A conversation session for a specific user containing a topic title and timestamps.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "model": { "type": "string" },
+        "searchGroundingEnabled": { "type": "boolean" }
+      },
+      "required": ["id", "userId", "title", "createdAt", "updatedAt", "model", "searchGroundingEnabled"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A message item within a discussion thread.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "conversationId": { "type": "string" },
+        "userId": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "model"] },
+        "text": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "tokensUsed": { "type": "number" }
+      },
+      "required": ["id", "conversationId", "userId", "role", "text", "createdAt"]
+    },
+    "Memory": {
+      "title": "Memory",
+      "description": "A synthesized or injected fact about the user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["short", "long", "profile", "semantic"] },
+        "content": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "importance": { "type": "number" }
+      },
+      "required": ["userId", "type", "content", "createdAt", "importance"]
+    }
+  },
+  "firestore": {
+    "conversations/{conversationId}": {
+      "schema": "Conversation",
+      "description": "User conversation logs"
+    },
+    "messages/{messageId}": {
+      "schema": "Message",
+      "description": "All message entries linked to conversations"
+    },
+    "memories/{memoryId}": {
+      "schema": "Memory",
+      "description": "Long-term context memory entries"
+    }
+  }
+}

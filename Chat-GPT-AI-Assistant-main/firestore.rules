@@ -1,0 +1,91 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation for Conversation
+    function isValidConversation(data) {
+      return data.userId == request.auth.uid
+        && data.title is string && data.title.size() <= 200
+        && data.createdAt is number
+        && data.updatedAt is number
+        && data.model is string && data.model.size() <= 50
+        && data.searchGroundingEnabled is bool;
+    }
+
+    // Validation for Message
+    function isValidMessage(data) {
+      return data.conversationId is string && data.conversationId.size() <= 128
+        && data.userId == request.auth.uid
+        && data.role is string && (data.role == 'user' || data.role == 'model')
+        && data.text is string && data.text.size() <= 50000
+        && data.createdAt is number;
+    }
+
+    // Validation for Memory
+    function isValidMemory(data) {
+      return data.userId == request.auth.uid
+        && data.type is string && (data.type == 'short' || data.type == 'long' || data.type == 'profile' || data.type == 'semantic')
+        && data.content is string && data.content.size() <= 5000
+        && data.createdAt is number
+        && data.importance is number && data.importance >= 1 && data.importance <= 5;
+    }
+
+    // Users collection: only the user themselves can read/write their profile
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Conversations collection: user can only access their own conversations
+    match /conversations/{conversationId} {
+      allow read: if isAuthenticated() && existing().userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidConversation(incoming()) && incoming().userId == request.auth.uid;
+      allow update: if isAuthenticated() && existing().userId == request.auth.uid && (
+        // Action: rename or update updatedAt
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'updatedAt'])
+      );
+      allow delete: if isAuthenticated() && existing().userId == request.auth.uid;
+    }
+
+    // Messages collection: user can only access messages in their conversations
+    match /messages/{messageId} {
+      allow read: if isAuthenticated() && existing().userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidMessage(incoming()) && incoming().userId == request.auth.uid;
+      allow update: if isAuthenticated() && existing().userId == request.auth.uid && (
+        // Action: update message text/citations/tokensUsed
+        incoming().diff(existing()).affectedKeys().hasOnly(['text', 'citations', 'tokensUsed'])
+      );
+      allow delete: if isAuthenticated() && existing().userId == request.auth.uid;
+    }
+
+    // Memories collection: user can only access their own memories
+    match /memories/{memoryId} {
+      allow read: if isAuthenticated() && existing().userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidMemory(incoming()) && incoming().userId == request.auth.uid;
+      allow update: if isAuthenticated() && existing().userId == request.auth.uid && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['type', 'content', 'importance'])
+      );
+      allow delete: if isAuthenticated() && existing().userId == request.auth.uid;
+    }
+
+    // Global Safety Net - Block all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
